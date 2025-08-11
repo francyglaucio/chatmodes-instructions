@@ -4,30 +4,46 @@ Sistema completo de perfis especializados para desenvolvimento com VS Code.
 
 ## ⚡ Instalação Rápida
 
+### Linux/macOS:
 ```bash
-# Método 1: Instalação automática (recomendado)
 curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install.sh | bash
+```
 
-# Método 2: Clone manual
-git clone https://github.com/francyglaucio/chatmodes-instructions.git
-cd chatmodes-instructions
-cp -r chatmodes/* ~/.vscode/chatmodes/
-cp -r instructions/* ~/.vscode/instructions/
+### Windows (PowerShell - Recomendado):
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install-windows.ps1" -OutFile "install-windows.ps1"
+.\install-windows.ps1
+```
+
+### Windows (Git Bash):
+```bash
+curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install.sh | bash
+```
+
+### 🪟 Problemas no Windows?
+```bash
+# Execute o diagnóstico
+curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/diagnose-windows.sh | bash
+
+# Ou use o instalador interativo
+curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install-windows.bat -o install-windows.bat
+install-windows.bat
 ```
 
 ## 🎯 Perfis Disponíveis
 
-| Perfil | Comando | Especialização |
-|--------|---------|----------------|
-| 🏗️ **Arquiteto** | `code ~/.vscode/chatmodes/architect.chatmode.md` | Arquitetura de Soluções |
-| ⚡ **Angular** | `code ~/.vscode/chatmodes/dev-angular.chatmode.md` | Angular 15+ |
-| 🔧 **Angular Legacy** | `code ~/.vscode/chatmodes/dev-angular-legacy.chatmode.md` | Angular 8-14 |
-| ⚛️ **React** | `code ~/.vscode/chatmodes/dev-react.chatmode.md` | React 18+ |
-| ☕ **Java** | `code ~/.vscode/chatmodes/dev-java.chatmode.md` | Spring Boot |
-| 🟢 **Node.js** | `code ~/.vscode/chatmodes/dev-node.chatmode.md` | NestJS |
-| 🔷 **C#** | `code ~/.vscode/chatmodes/dev-csharp.chatmode.md` | .NET Core |
-| 🛠️ **DevOps** | `code ~/.vscode/chatmodes/infra.chatmode.md` | Docker/K8s |
-| 🧪 **QA** | `code ~/.vscode/chatmodes/qa-specialist.chatmode.md` | Testing |
+| Perfil | Linux/macOS | Windows | Especialização |
+|--------|-------------|---------|----------------|
+| 🏗️ **Arquiteto** | `code ~/.vscode/chatmodes/architect.chatmode.md` | `code "$env:USERPROFILE\.vscode\chatmodes\architect.chatmode.md"` | Arquitetura de Soluções |
+| ⚡ **Angular** | `code ~/.vscode/chatmodes/dev-angular.chatmode.md` | `code "$env:USERPROFILE\.vscode\chatmodes\dev-angular.chatmode.md"` | Angular 15+ |
+| 🔧 **Angular Legacy** | `code ~/.vscode/chatmodes/dev-angular-legacy.chatmode.md` | `code "$env:USERPROFILE\.vscode\chatmodes\dev-angular-legacy.chatmode.md"` | Angular 8-14 |
+| ⚛️ **React** | `code ~/.vscode/chatmodes/dev-react.chatmode.md` | `code "$env:USERPROFILE\.vscode\chatmodes\dev-react.chatmode.md"` | React 18+ |
+| ☕ **Java** | `code ~/.vscode/chatmodes/dev-java.chatmode.md` | `code "$env:USERPROFILE\.vscode\chatmodes\dev-java.chatmode.md"` | Spring Boot |
+| 🟢 **Node.js** | `code ~/.vscode/chatmodes/dev-node.chatmode.md` | `code "$env:USERPROFILE\.vscode\chatmodes\dev-node.chatmode.md"` | NestJS |
+| 🔷 **C#** | `code ~/.vscode/chatmodes/dev-csharp.chatmode.md` | `code "$env:USERPROFILE\.vscode\chatmodes\dev-csharp.chatmode.md"` | .NET Core |
+| 🛠️ **DevOps** | `code ~/.vscode/chatmodes/infra.chatmode.md` | `code "$env:USERPROFILE\.vscode\chatmodes\infra.chatmode.md"` | Docker/K8s |
+| 🧪 **QA** | `code ~/.vscode/chatmodes/qa-specialist.chatmode.md` | `code "$env:USERPROFILE\.vscode\chatmodes\qa-specialist.chatmode.md"` | Testing |
 
 ## 📚 Como Usar
 

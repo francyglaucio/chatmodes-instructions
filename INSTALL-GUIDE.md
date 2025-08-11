@@ -4,6 +4,7 @@
 - [Visão Geral](#visão-geral)
 - [Pré-requisitos](#pré-requisitos)
 - [Instalação Global](#instalação-global)
+- [Instalação Específica Windows](#instalação-específica-windows)
 - [Configuração do VS Code](#configuração-do-vs-code)
 - [Estrutura do Sistema](#estrutura-do-sistema)
 - [Como Usar](#como-usar)
@@ -26,12 +27,33 @@ O **ChatModes System** é um conjunto de perfis especializados para desenvolvime
 ## 🔧 Pré-requisitos
 
 ### Software Necessário:
+
+#### Todos os Sistemas:
 ```bash
 # VS Code (versão 1.70+)
-# Git (para versionamento)
-# Node.js 18+ (para projetos JavaScript/TypeScript)
-# Terminal com suporte a cores (zsh/bash)
+# Terminal com suporte a cores
 ```
+
+#### Linux/macOS:
+```bash
+# Git (para versionamento)
+# curl (para downloads)
+# Node.js 18+ (para projetos JavaScript/TypeScript)
+# Terminal: zsh/bash
+```
+
+#### Windows:
+```powershell
+# VS Code (versão 1.70+)
+# PowerShell 5.0+ (incluído no Windows 10+)
+# Git for Windows (opcional, para Git Bash)
+# Node.js 18+ (para projetos JavaScript/TypeScript)
+```
+
+**Links de Download Windows:**
+- [VS Code](https://code.visualstudio.com/)
+- [Git for Windows](https://git-scm.com/download/win) (opcional)
+- [Node.js](https://nodejs.org/)
 
 ### Extensões VS Code Recomendadas:
 ```json
@@ -55,9 +77,30 @@ O **ChatModes System** é um conjunto de perfis especializados para desenvolvime
 
 ### Método 1: Instalação Automática (Recomendado)
 
-1. **Baixe o instalador:**
+#### Linux/macOS:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install.sh | bash
+```
+
+#### Windows - Opção A (PowerShell - Recomendado):
+```powershell
+# Execute no PowerShell como Administrador
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install-windows.ps1" -OutFile "install-windows.ps1"
+.\install-windows.ps1
+```
+
+#### Windows - Opção B (Git Bash):
+```bash
+# Execute no Git Bash como Administrador
+curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install.sh | bash
+```
+
+#### Windows - Opção C (Installer Batch):
+```cmd
+# Baixe e execute o installer batch
+curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install-windows.bat -o install-windows.bat
+install-windows.bat
 ```
 
 ### Método 2: Instalação Manual
@@ -95,6 +138,73 @@ Copy-Item -Path "instructions\*" -Destination "$env:USERPROFILE\.vscode\instruct
 chmod +x ~/.vscode/chatmodes/*.sh
 chmod +x test-angular-nestjs.sh
 chmod +x validate-chatmodes.sh
+```
+
+## 🪟 Instalação Específica Windows
+
+### Problemas Identificados no Windows
+
+O instalador original pode falhar no Windows devido a:
+- Diferenças de paths entre Unix e Windows
+- Diretório temporário `/tmp` inexistente
+- Comandos `curl` com flags incompatíveis
+- Permissões do sistema de arquivos
+
+### Soluções Disponíveis
+
+#### 🥇 Método PowerShell (Mais Confiável)
+```powershell
+# 1. Configurar política de execução
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# 2. Baixar e executar instalador PowerShell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install-windows.ps1" -OutFile "install-windows.ps1"
+.\install-windows.ps1
+
+# Para forçar instalação sem prompts:
+.\install-windows.ps1 -Force
+```
+
+#### 🥈 Método Git Bash (Script Corrigido)
+```bash
+# Requer Git for Windows instalado
+curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install.sh | bash
+```
+
+#### 🥉 Método Batch Interativo
+```cmd
+# Baixar e executar menu interativo
+curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/install-windows.bat -o install-windows.bat
+install-windows.bat
+```
+
+#### 🔧 Diagnóstico de Problemas
+```bash
+# Execute se tiver problemas
+curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/diagnose-windows.sh | bash
+```
+
+### Estrutura no Windows
+Após instalação, arquivos estarão em:
+```
+C:\Users\[SeuUsuario]\.vscode\
+├── chatmodes\          # 10 perfis especializados
+├── instructions\       # 11 arquivos de instruções  
+├── scripts\           # Scripts utilitários
+├── INSTALL-GUIDE.md   # Este guia
+└── README.md          # Guia rápido
+```
+
+### Atalhos Windows
+```powershell
+# Abrir perfil específico
+& "$env:USERPROFILE\.vscode\scripts\open-chatmode.ps1" "dev-angular"
+
+# Listar perfis disponíveis
+Get-ChildItem "$env:USERPROFILE\.vscode\chatmodes" -Filter "*.chatmode.md" | ForEach-Object { $_.BaseName.Replace('.chatmode', '') }
+
+# Validar instalação
+& "$env:USERPROFILE\.vscode\scripts\validate-chatmodes.sh"
 ```
 
 ### Verificação da Instalação
@@ -477,17 +587,57 @@ Crie um `.vscode/settings.json` no projeto:
 
 ### Problemas Comuns
 
-#### 1. **Arquivos não encontrados**
+#### 1. **Problemas no Windows (NOVO)**
+
+**Script não baixa arquivos:**
+```powershell
+# Diagnóstico Windows
+curl -fsSL https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/diagnose-windows.sh | bash
+
+# Ou use o PowerShell (método preferido)
+.\install-windows.ps1
+
+# Se persistir, instalação manual:
+# 1. Crie os diretórios manualmente
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.vscode\chatmodes"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.vscode\instructions"
+
+# 2. Baixe os arquivos um por um
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main/chatmodes/dev-angular.chatmode.md" -OutFile "$env:USERPROFILE\.vscode\chatmodes\dev-angular.chatmode.md"
+```
+
+**Erro de Execution Policy:**
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+# ou
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+```
+
+**Git Bash não encontrado:**
+- Instale o Git for Windows: https://git-scm.com/download/win
+- Ou use o método PowerShell
+
+#### 2. **Arquivos não encontrados**
 ```bash
 # Verificar se os diretórios existem
+# Linux/macOS:
 ls -la ~/.vscode/chatmodes/
 ls -la ~/.vscode/instructions/
 
+# Windows (PowerShell):
+Get-ChildItem "$env:USERPROFILE\.vscode\chatmodes"
+Get-ChildItem "$env:USERPROFILE\.vscode\instructions"
+
 # Recriar se necessário
+# Linux/macOS:
 mkdir -p ~/.vscode/{chatmodes,instructions}
+
+# Windows (PowerShell):
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.vscode\chatmodes"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.vscode\instructions"
 ```
 
-#### 2. **Permissões no Linux/macOS**
+#### 3. **Permissões no Linux/macOS**
 ```bash
 # Corrigir permissões
 chmod 755 ~/.vscode/chatmodes/
@@ -495,15 +645,18 @@ chmod 644 ~/.vscode/chatmodes/*.md
 chmod +x ~/.vscode/scripts/*.sh
 ```
 
-#### 3. **Links quebrados**
+#### 4. **Links quebrados**
 ```bash
-# Validar links
+# Validar links (Linux/macOS)
 ./validate-chatmodes.sh
+
+# Windows (PowerShell)
+& "$env:USERPROFILE\.vscode\scripts\validate-chatmodes.sh"
 
 # Corrigir manualmente se necessário
 ```
 
-#### 4. **VS Code não reconhece arquivos**
+#### 5. **VS Code não reconhece arquivos**
 ```bash
 # Recarregar VS Code
 # Ctrl+Shift+P → "Developer: Reload Window"
@@ -567,18 +720,47 @@ echo "📊 Status: $([[ $broken_links -eq 0 ]] && echo "SAUDÁVEL" || echo "REQU
 
 ### Validação Completa
 Execute para verificar a integridade do sistema:
+
+#### Linux/macOS:
 ```bash
 ./validate-chatmodes.sh
+# ou
+~/.vscode/scripts/validate-chatmodes.sh
+```
+
+#### Windows:
+```powershell
+# PowerShell
+& "$env:USERPROFILE\.vscode\scripts\validate-chatmodes.sh"
+
+# Git Bash
+~/.vscode/scripts/validate-chatmodes.sh
 ```
 
 ### Teste Angular + NestJS
 Execute para testar perfil específico:
+
+#### Linux/macOS:
 ```bash
 ./test-angular-nestjs.sh
 ```
 
+#### Windows:
+```powershell
+& "$env:USERPROFILE\.vscode\scripts\test-angular-nestjs.sh"
+```
+
+### Diagnóstico Windows
+Se houver problemas específicos no Windows:
+```bash
+# Execute no Git Bash
+./diagnose-windows.sh
+```
+
 ### Auto-Update
 Configure atualização automática:
+
+#### Linux/macOS:
 ```bash
 #!/bin/bash
 # ~/.vscode/scripts/auto-update.sh
@@ -586,6 +768,14 @@ Configure atualização automática:
 cd ~/.vscode/
 git pull origin main
 echo "✅ ChatModes atualizado"
+```
+
+#### Windows (PowerShell):
+```powershell
+# ~\.vscode\scripts\auto-update.ps1
+Set-Location "$env:USERPROFILE\.vscode"
+git pull origin main
+Write-Host "✅ ChatModes atualizado" -ForegroundColor Green
 ```
 
 ## 🚀 Próximos Passos

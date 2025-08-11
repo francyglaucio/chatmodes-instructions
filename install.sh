@@ -101,15 +101,36 @@ create_directories() {
     print_status "Diretórios criados em: $VSCODE_DIR"
 }
 
+# Baixar um arquivo individual (função auxiliar)
+download_single_file() {
+    local url="$1"
+    local output_file="$2"
+    local description="$3"
+    
+    # Criar diretório do arquivo se necessário
+    local output_dir=$(dirname "$output_file")
+    mkdir -p "$output_dir" 2>/dev/null
+    
+    # Tentar baixar o arquivo com verificações robustas
+    if curl -fsSL --retry 3 --retry-delay 1 --connect-timeout 10 --max-time 30 "$url" -o "$output_file" 2>/dev/null; then
+        if [[ -f "$output_file" ]] && [[ -s "$output_file" ]]; then
+            return 0
+        else
+            rm -f "$output_file" 2>/dev/null
+            return 1
+        fi
+    else
+        return 1
+    fi
+}
+
 # Baixar arquivos do repositório
 download_files() {
     print_info "Baixando arquivos do repositório..."
     
     local base_url="https://raw.githubusercontent.com/francyglaucio/chatmodes-instructions/main"
-    local temp_dir="/tmp/chatmodes-install"
-    
-    # Criar diretório temporário
-    mkdir -p "$temp_dir"
+    local success_count=0
+    local total_count=0
     
     # Lista de arquivos para download
     local chatmode_files=(
@@ -147,62 +168,95 @@ download_files() {
     # Baixar chatmodes
     print_info "Baixando perfis de chatmode..."
     for file in "${chatmode_files[@]}"; do
-        if curl -sL "$base_url/chatmodes/$file" -o "$temp_dir/$file"; then
+        ((total_count++))
+        print_info "Baixando: $file"
+        if download_single_file "$base_url/chatmodes/$file" "$VSCODE_DIR/chatmodes/$file" "$file"; then
             print_status "✓ $file"
+            ((success_count++))
         else
             print_error "Falha ao baixar $file"
+            print_info "URL tentada: $base_url/chatmodes/$file"
         fi
     done
     
     # Baixar instruções
     print_info "Baixando arquivos de instruções..."
     for file in "${instruction_files[@]}"; do
-        if curl -sL "$base_url/instructions/$file" -o "$temp_dir/$file"; then
+        ((total_count++))
+        print_info "Baixando: $file"
+        if download_single_file "$base_url/instructions/$file" "$VSCODE_DIR/instructions/$file" "$file"; then
             print_status "✓ $file"
+            ((success_count++))
         else
             print_error "Falha ao baixar $file"
+            print_info "URL tentada: $base_url/instructions/$file"
         fi
     done
     
     # Baixar scripts
     print_info "Baixando scripts utilitários..."
     for file in "${script_files[@]}"; do
-        if curl -sL "$base_url/$file" -o "$temp_dir/$file"; then
+        ((total_count++))
+        print_info "Baixando: $file"
+        if download_single_file "$base_url/$file" "$VSCODE_DIR/scripts/$file" "$file"; then
             print_status "✓ $file"
+            ((success_count++))
+            # Tornar script executável (exceto Windows)
+            if [[ "$OS" != "windows" ]]; then
+                chmod +x "$VSCODE_DIR/scripts/$file" 2>/dev/null
+            fi
         else
             print_warning "Falha ao baixar $file (opcional)"
+            print_info "URL tentada: $base_url/$file"
         fi
     done
     
-    echo "$temp_dir"
-}
-
-# Instalar arquivos
-install_files() {
-    local temp_dir="$1"
-    print_info "Instalando arquivos..."
+    # Baixar documentação adicional
+    print_info "Baixando documentação..."
+    local doc_files=(
+        "INSTALL-GUIDE.md"
+        "README.md"
+    )
     
-    # Copiar chatmodes
-    if ls "$temp_dir"/*.chatmode.md 1> /dev/null 2>&1; then
-        cp "$temp_dir"/*.chatmode.md "$VSCODE_DIR/chatmodes/"
-        print_status "Perfis de chatmode instalados"
+    for file in "${doc_files[@]}"; do
+        ((total_count++))
+        if download_single_file "$base_url/$file" "$VSCODE_DIR/$file" "$file"; then
+            print_status "✓ $file"
+            ((success_count++))
+        fi
+    done
+    
+    print_info "Download concluído: $success_count/$total_count arquivos baixados com sucesso"
+    
+    if [[ $success_count -lt 15 ]]; then
+        print_warning "Alguns arquivos não foram baixados. Verificando conectividade..."
+        if ! curl -fsSL --connect-timeout 5 "https://github.com" >/dev/null 2>&1; then
+            print_error "Problema de conectividade detectado"
+            return 1
+        fi
     fi
     
-    # Copiar instruções (arquivos .md que não são chatmodes)
-    for file in "$temp_dir"/*.md; do
-        if [[ ! "$file" == *.chatmode.md ]]; then
-            cp "$file" "$VSCODE_DIR/instructions/"
-        fi
-    done
-    print_status "Arquivos de instruções instalados"
+    return 0
+}
+
+# Instalar arquivos (função simplificada - arquivos já estão no local correto)
+install_files() {
+    print_info "Verificando arquivos instalados..."
     
-    # Copiar scripts
-    if ls "$temp_dir"/*.sh 1> /dev/null 2>&1; then
-        cp "$temp_dir"/*.sh "$VSCODE_DIR/scripts/"
-        # Tornar scripts executáveis
-        if [[ "$OS" != "windows" ]]; then
-            chmod +x "$VSCODE_DIR/scripts"/*.sh
-        fi
+    # Verificar se arquivos foram baixados corretamente
+    local chatmode_count=$(find "$VSCODE_DIR/chatmodes" -name "*.md" -type f 2>/dev/null | wc -l)
+    local instruction_count=$(find "$VSCODE_DIR/instructions" -name "*.md" -type f 2>/dev/null | wc -l)
+    
+    if [[ $chatmode_count -gt 0 ]]; then
+        print_status "Perfis de chatmode instalados: $chatmode_count"
+    fi
+    
+    if [[ $instruction_count -gt 0 ]]; then
+        print_status "Arquivos de instruções instalados: $instruction_count"
+    fi
+    
+    # Verificar scripts
+    if ls "$VSCODE_DIR/scripts"/*.sh 1> /dev/null 2>&1; then
         print_status "Scripts utilitários instalados"
     fi
 }
@@ -366,22 +420,24 @@ main() {
     check_prerequisites
     create_directories
     
-    local temp_dir
-    temp_dir=$(download_files)
+    if download_files; then
+        print_status "Download concluído com sucesso"
+    else
+        print_error "Falha no download de alguns arquivos"
+        print_info "Tentando continuar com os arquivos baixados..."
+    fi
     
-    install_files "$temp_dir"
+    install_files
     configure_vscode
     
     if validate_installation; then
         create_shortcuts
         show_completion_info
         
-        # Limpeza
-        rm -rf "$temp_dir"
-        
         exit 0
     else
-        print_error "Instalação falhou na validação"
+        print_error "Instalação incompleta - alguns arquivos podem estar faltando"
+        print_info "Tente executar o instalador novamente ou instale manualmente"
         exit 1
     fi
 }
