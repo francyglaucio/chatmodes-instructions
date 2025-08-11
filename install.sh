@@ -50,10 +50,11 @@ print_colored $YELLOW "📁 Diretório de instalação: $TARGET_DIR"
 mkdir -p "$TARGET_DIR/.github/chatmodes"
 mkdir -p "$TARGET_DIR/.github/instructions"
 
-print_colored $YELLOW "📋 Copiando ChatModes..."
+print_colored $YELLOW "📋 Verificando ChatModes..."
 
 # Verificar se os arquivos de origem existem
-SOURCE_DIR="/home/glaucio/.vscode/.github"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="$SCRIPT_DIR/.github"
 
 if [ ! -d "$SOURCE_DIR/chatmodes" ]; then
     print_colored $RED "❌ Diretório de origem não encontrado: $SOURCE_DIR/chatmodes"
@@ -61,15 +62,45 @@ if [ ! -d "$SOURCE_DIR/chatmodes" ]; then
     exit 1
 fi
 
-# Copiar chatmodes
-cp -r "$SOURCE_DIR/chatmodes/"* "$TARGET_DIR/.github/chatmodes/" 2>/dev/null
-CHATMODE_COUNT=$(ls -1 "$TARGET_DIR/.github/chatmodes/"*.md 2>/dev/null | wc -l)
-print_colored $GREEN "✅ $CHATMODE_COUNT chatmodes copiados"
-
-# Copiar instructions
-cp -r "$SOURCE_DIR/instructions/"* "$TARGET_DIR/.github/instructions/" 2>/dev/null
-INSTRUCTION_COUNT=$(ls -1 "$TARGET_DIR/.github/instructions/"*.md 2>/dev/null | wc -l)
-print_colored $GREEN "✅ $INSTRUCTION_COUNT instructions copiadas"
+# Se estiver executando no diretório global, apenas verifica
+if [ "$SCRIPT_DIR" == "$TARGET_DIR" ]; then
+    print_colored $BLUE "ℹ️  Executando no diretório de destino, verificando arquivos..."
+    
+    # Verificar chatmodes
+    if [ -d "$TARGET_DIR/.github/chatmodes" ] && [ "$(ls -A $TARGET_DIR/.github/chatmodes 2>/dev/null)" ]; then
+        CHATMODE_COUNT=$(ls -1 "$TARGET_DIR/.github/chatmodes/"*.md 2>/dev/null | wc -l)
+        print_colored $GREEN "✅ $CHATMODE_COUNT chatmodes já disponíveis"
+    else
+        print_colored $RED "❌ Nenhum chatmode encontrado"
+    fi
+    
+    # Verificar instructions
+    if [ -d "$TARGET_DIR/.github/instructions" ] && [ "$(ls -A $TARGET_DIR/.github/instructions 2>/dev/null)" ]; then
+        INSTRUCTION_COUNT=$(ls -1 "$TARGET_DIR/.github/instructions/"*.md 2>/dev/null | wc -l)
+        print_colored $GREEN "✅ $INSTRUCTION_COUNT instructions já disponíveis"
+    else
+        print_colored $RED "❌ Nenhuma instruction encontrada"
+    fi
+else
+    # Copiar de outro local para o destino
+    # Copiar chatmodes
+    if [ -d "$SOURCE_DIR/chatmodes" ] && [ "$(ls -A $SOURCE_DIR/chatmodes 2>/dev/null)" ]; then
+        cp "$SOURCE_DIR/chatmodes/"*.md "$TARGET_DIR/.github/chatmodes/" 2>/dev/null
+        CHATMODE_COUNT=$(ls -1 "$TARGET_DIR/.github/chatmodes/"*.md 2>/dev/null | wc -l)
+        print_colored $GREEN "✅ $CHATMODE_COUNT chatmodes copiados"
+    else
+        print_colored $RED "❌ Nenhum chatmode encontrado em $SOURCE_DIR/chatmodes"
+    fi
+    
+    # Copiar instructions
+    if [ -d "$SOURCE_DIR/instructions" ] && [ "$(ls -A $SOURCE_DIR/instructions 2>/dev/null)" ]; then
+        cp "$SOURCE_DIR/instructions/"*.md "$TARGET_DIR/.github/instructions/" 2>/dev/null
+        INSTRUCTION_COUNT=$(ls -1 "$TARGET_DIR/.github/instructions/"*.md 2>/dev/null | wc -l)
+        print_colored $GREEN "✅ $INSTRUCTION_COUNT instructions copiadas"
+    else
+        print_colored $RED "❌ Nenhuma instruction encontrada em $SOURCE_DIR/instructions"
+    fi
+fi
 
 echo
 print_colored $GREEN "╔══════════════════════════════════════════════════════════════╗"
