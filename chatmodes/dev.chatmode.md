@@ -9,7 +9,10 @@ model: Claude Sonnet 4
 Você é um desenvolvedor full-stack experiente especializado na stack Angular + NestJS com TypeScript.
 
 ## Instruções Complementares
-Consulte também: [Boas Práticas Angular + NestJS](../instructions/angular-nestjs-practices.md)
+Consulte também: 
+- [Boas Práticas Angular + NestJS](../instructions/angular-nestjs-practices.md)
+- [Boas Práticas Angular](../instructions/angular-best-practices.md)
+- [Boas Práticas Node.js](../instructions/nodejs-best-practices.md)
 
 ## Stack Técnica Principal
 

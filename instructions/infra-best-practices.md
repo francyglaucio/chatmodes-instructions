@@ -1,103 +1,278 @@
-# Instruções de Infraestrutura - Boas Práticas
+# DevOps e Infraestrutura - Boas Práticas e Padrões
 
-## Checklist de Revisão de Infraestrutura
+## Checklist de DevOps e Infraestrutura
 
-### Docker e Containerização
-- [ ] Multi-stage builds para otimizar tamanho da imagem
-- [ ] Non-root user nos containers
-- [ ] Health checks definidos
-- [ ] Recursos limitados (CPU/Memory)
-- [ ] Secrets não expostos em variáveis de ambiente
-- [ ] Imagens base seguras e atualizadas
-
-### Kubernetes
+### Containerização e Orquestração
+- [ ] Docker images otimizadas (multi-stage builds)
+- [ ] Docker Compose para desenvolvimento local
+- [ ] Kubernetes manifests configurados
+- [ ] Helm charts para deploy
+- [ ] Container security scanning
 - [ ] Resource limits e requests definidos
-- [ ] Liveness e readiness probes configurados
-- [ ] ConfigMaps e Secrets para configuração
-- [ ] NetworkPolicies para segmentação
-- [ ] RBAC apropriado
-- [ ] Horizontal Pod Autoscaler quando necessário
+- [ ] Health checks implementados
 
-### CI/CD
-- [ ] Pipelines com stages bem definidos (build, test, deploy)
-- [ ] Secrets gerenciados de forma segura
-- [ ] Rollback strategy implementada
-- [ ] Testes automatizados incluídos
-- [ ] Security scanning nos pipelines
-- [ ] Deployment strategy (blue-green, canary, rolling)
+### CI/CD Pipeline
+- [ ] Pipeline declarativo (GitLab CI, GitHub Actions, Jenkins)
+- [ ] Build automated com testes
+- [ ] Security scanning integrado
+- [ ] Quality gates configurados
+- [ ] Blue-green ou canary deployment
+- [ ] Rollback strategy definida
+- [ ] Environment promotion process
 
-### Monitoramento
-- [ ] Métricas de aplicação coletadas
-- [ ] Logs estruturados e centralizados
-- [ ] Alertas configurados para cenários críticos
-- [ ] Dashboards para visualização
-- [ ] SLA/SLI definidos
-- [ ] Distributed tracing para microservices
+### Infrastructure as Code
+- [ ] Terraform ou CloudFormation
+- [ ] Ansible para configuration management
+- [ ] Secrets management (Vault, AWS Secrets)
+- [ ] Infrastructure versioning
+- [ ] State management configurado
+- [ ] Drift detection implementado
+- [ ] Disaster recovery plan
 
-### Proxy Reverso
-- [ ] Load balancing configurado adequadamente
-- [ ] SSL termination implementada
-- [ ] Rate limiting configurado
-- [ ] Health checks para backends
-- [ ] Logs de acesso e erro habilitados
-- [ ] Caching headers configurados
-- [ ] Compression (gzip/brotli) habilitada
-- [ ] Security headers implementados
-
-### Firewall e Segurança de Rede
-- [ ] Regras de firewall documentadas e revisadas
-- [ ] Princípio do menor privilégio aplicado
-- [ ] Ports desnecessários fechados
-- [ ] WAF configurado para aplicações web
-- [ ] DDoS protection habilitada
-- [ ] Network segmentation implementada
-- [ ] VPN configurada para acesso administrativo
-- [ ] IDS/IPS monitorando tráfego suspeito
+### Monitoring e Observabilidade
+- [ ] Prometheus + Grafana configurado
+- [ ] Centralized logging (ELK, Loki)
+- [ ] Distributed tracing (Jaeger, Zipkin)
+- [ ] Application Performance Monitoring (APM)
+- [ ] Alerting rules definidas
+- [ ] SLA/SLO metrics tracked
+- [ ] Incident response procedures
 
 ### Segurança
-- [ ] Network segmentation implementada
-- [ ] SSL/TLS certificates atualizados
-- [ ] Vulnerability scanning automatizado
-- [ ] Access control e audit logs
-- [ ] Backup e disaster recovery testados
-- [ ] Data encryption at rest e in transit
+- [ ] HTTPS/TLS configurado
+- [ ] WAF (Web Application Firewall)
+- [ ] Network security (VPC, subnets, security groups)
+- [ ] RBAC (Role-Based Access Control)
+- [ ] Secrets rotation automatizada
+- [ ] Vulnerability scanning
+- [ ] Compliance requirements met
 
-### Performance
-- [ ] Load testing realizado
-- [ ] Database optimization
-- [ ] Caching strategy implementada
-- [ ] CDN configurado quando necessário
-- [ ] Auto-scaling policies
-- [ ] Resource utilization monitorada
+## Templates de Infraestrutura
 
-## Templates de Configuração
+### Docker Configuration
 
-### docker-compose.yml básico
+#### Dockerfile Multi-stage Otimizado
+```dockerfile
+# Node.js Application
+FROM node:18-alpine AS dependencies
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+FROM node:18-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+RUN npm prune --production
+
+FROM node:18-alpine AS runtime
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Copy built application
+COPY --from=build --chown=nextjs:nodejs /app/dist ./dist
+COPY --from=dependencies --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nextjs:nodejs /app/package.json ./package.json
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node healthcheck.js
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/main.js"]
+
+# .NET Application
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY ["*.sln", "."]
+COPY ["src/Api/*.csproj", "src/Api/"]
+COPY ["src/Core/*.csproj", "src/Core/"]
+COPY ["src/Infrastructure/*.csproj", "src/Infrastructure/"]
+RUN dotnet restore
+
+COPY . .
+WORKDIR "/src/src/Api"
+RUN dotnet build -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+# Create non-root user
+RUN adduser --disabled-password --gecos "" --home "/nonexistent" --shell "/sbin/nologin" --no-create-home --uid 10001 appuser
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost/health || exit 1
+
+ENTRYPOINT ["dotnet", "Api.dll"]
+```
+
+#### Docker Compose Development
 ```yaml
+# docker-compose.yml
 version: '3.8'
+
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://user:password@db:5432/myapp
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-jwt-secret
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
     restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d myapp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - app
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
 ```
 
-### Kubernetes Deployment básico
+### Kubernetes Manifests
+
+#### Deployment with ConfigMap and Secrets
 ```yaml
+# namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myapp
+  labels:
+    name: myapp
+
+---
+# configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: myapp
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  LOG_LEVEL: "info"
+  API_VERSION: "v1"
+
+---
+# secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: myapp
+type: Opaque
+data:
+  DATABASE_URL: cG9zdGdyZXNxbDovL3VzZXI6cGFzc3dvcmRAZGI6NTQzMi9teWFwcA==
+  JWT_SECRET: eW91ci1qd3Qtc2VjcmV0
+  REDIS_URL: cmVkaXM6Ly9yZWRpczozNjM3OQ==
+
+---
+# deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: app-deployment
+  namespace: myapp
+  labels:
+    app: myapp
 spec:
   replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app: myapp
@@ -105,12 +280,23 @@ spec:
     metadata:
       labels:
         app: myapp
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
-      - name: myapp
+      - name: app
         image: myapp:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 3000
+          name: http
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
         resources:
           requests:
             memory: "256Mi"
@@ -124,68 +310,132 @@ spec:
             port: 3000
           initialDelaySeconds: 30
           periodSeconds: 10
-```
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 10001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/cache
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+      securityContext:
+        fsGroup: 10001
 
-### NGINX Proxy Reverso
-```nginx
-server {
-    listen 80;
-    server_name example.com;
-    
-    # Redirect HTTP to HTTPS
-    return 301 https://$server_name$request_uri;
-}
+---
+# service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-service
+  namespace: myapp
+  labels:
+    app: myapp
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: myapp
 
-server {
-    listen 443 ssl http2;
-    server_name example.com;
-    
-    # SSL Configuration
-    ssl_certificate /etc/ssl/certs/example.com.crt;
-    ssl_certificate_key /etc/ssl/private/example.com.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512;
-    
-    # Security Headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    
-    # Rate Limiting
-    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
-    limit_req zone=api burst=20 nodelay;
-    
-    # Proxy Configuration
-    location / {
-        proxy_pass http://backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        
-        # Health Check
-        proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
-    }
-    
-    # Static Files
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
+---
+# ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: myapp
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+  - hosts:
+    - api.myapp.com
+    secretName: app-tls
+  rules:
+  - host: api.myapp.com
+    http:
+      paths:
+      - path: /(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: app-service
+            port:
+              number: 80
 
-# Backend Pool
-upstream backend {
-    least_conn;
-    server 10.0.1.10:3000 weight=3 max_fails=3 fail_timeout=30s;
-    server 10.0.1.11:3000 weight=3 max_fails=3 fail_timeout=30s;
-    server 10.0.1.12:3000 weight=1 backup;
-}
+---
+# hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: app-hpa
+  namespace: myapp
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: app-deployment
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
 ```
 
 ### Traefik (docker-compose.yml)
@@ -369,12 +619,51 @@ iptables-restore < /etc/iptables/rules.v4
 netstat -tulnp
 ```
 
-### Traefik
-```bash
-# Ver logs
-docker logs traefik -f
+## Comandos Essenciais DevOps
 
-# Dashboard API
+```bash
+# Docker
+docker build -t myapp:latest .
+docker run -d -p 3000:3000 --name myapp myapp:latest
+docker logs -f myapp
+docker exec -it myapp /bin/sh
+docker-compose up -d
+docker-compose logs -f
+
+# Kubernetes
+kubectl apply -f k8s/
+kubectl get pods -n myapp
+kubectl logs -f deployment/myapp-deployment -n myapp
+kubectl exec -it pod/myapp-pod -- /bin/sh
+kubectl port-forward service/myapp-service 3000:80
+kubectl scale deployment myapp-deployment --replicas=5
+
+# Helm
+helm install myapp ./helm/myapp
+helm upgrade myapp ./helm/myapp --values values-prod.yaml
+helm rollback myapp 1
+helm list
+helm status myapp
+
+# Terraform
+terraform init
+terraform plan
+terraform apply
+terraform destroy
+terraform state list
+terraform import aws_instance.example i-1234567890abcdef0
+
+# AWS CLI
+aws eks update-kubeconfig --region us-west-2 --name my-cluster
+aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin
+aws s3 sync ./build s3://my-bucket
+aws logs tail /aws/lambda/my-function --follow
+
+# Monitoring
+kubectl port-forward -n monitoring service/prometheus-server 9090:80
+kubectl port-forward -n monitoring service/grafana 3000:80
+curl -G 'http://localhost:9090/api/v1/query' --data-urlencode 'query=up'
+```
 curl http://localhost:8080/api/http/routers
 
 # Certificados
